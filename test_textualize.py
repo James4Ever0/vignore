@@ -15,8 +15,10 @@ class StopwatchApp(App):
         self.treeview = RichLog(auto_scroll=False)
         self.footer = Footer()
         self.counter = 0
-        self.label = Label(Text.assemble(('data','bold')))
+        self.label = Label(Text.assemble(('data','bold')),expand=True)
         self.label.styles.background = 'red'
+        # self.label.styles.border = ('solid','red')
+        # self.label.styles.height = 3
         self.label.styles.height = 1
         # self.label.styles.dock = 'bottom'
         
