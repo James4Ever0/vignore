@@ -1,0 +1,2 @@
+# vignore
+Visualize ignore files
