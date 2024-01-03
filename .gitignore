@@ -1,0 +1,8 @@
+*
+!*/
+
+!*.py
+!*.txt
+!*.sh
+!*.README
+!*.gitignore
