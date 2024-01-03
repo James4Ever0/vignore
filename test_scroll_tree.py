@@ -1,5 +1,5 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Log
+from textual.widgets import Header, Footer
 
 
 class StopwatchApp(App):
@@ -9,17 +9,8 @@ class StopwatchApp(App):
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
-        h = Header()
-        t = Log()
-        t.write("hello world\n")
-        t.write("hello world\n")
-        # t.clear()
-        t.write(f"offset: {t.scroll_offset}")
-        # t.scroll_offset.x
-        # t.scroll_offset.y
-        # t = Tree('.')
-        f = Footer()
-        return [h, t, f]
+        yield Header()
+        yield Footer()
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""

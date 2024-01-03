@@ -1,19 +1,21 @@
 from rich.text import Text
 from rich.console import Console
-
+# color from: 
+from rich.color import ANSI_COLOR_NAMES
 console = Console()
-text = Text.assemble(("Hello", "bold magenta"), " World!")
-console.print(text)
-
 from rich.tree import Tree
 from rich import print
 
-tree = Tree("Rich Tree")
-tree.add('avc')
-tree.add('[2m1s {py:1s js:2m}]\nef')
+tree = Tree("agi_computer_control")
+tree.add('folder0')
+tree.add('[2m1s {py:1s js:2m}]\nfolder1')
 subtree = tree.add(
-Text.assemble(("[2m1s {py:1s js:2m}]\n", "bold magenta"), " World!")
+Text.assemble(("[2m1s {py:1s js:2m}]\n", "light_yellow3"), "folder2")
 )
-subtree.add(Text.assemble(("[2m1s]", "bold magenta"), " World!"))
-subtree.add(Text.assemble(("[4MB] world", "red"), 'beta'), guide_style='red').add('c')
+subtree.add(Text.assemble(("[2m1s]", "bold magenta"), " file.js"))
+subsubtree = subtree.add("[4MB {py:4MB}]\nworld", style='gray3', guide_style='gray3')
+subsubtree.add('[4MB] cent.py')
 print(tree)
+
+text = Text.assemble(("ETA:", "bold magenta"), " 2m1s")
+console.print(text)
