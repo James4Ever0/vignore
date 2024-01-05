@@ -1,10 +1,10 @@
 # vignore
 
-It is been a while that I hate to write ignore files, be it `.gitignore`, `.dockerignore` or `.fdignore`.
+It has been a while since I've found writing ignore files, like .gitignore, .dockerignore, or .fdignore, to be a hassle.
 
-I failed to get the right files included, and failed to exclude unwanted files.
+I've struggled with including the correct files and excluding unwanted ones.
 
-No more shooting in the blind! Visualize ignored (selected) files and get instant feedback in intuitive representations.
+But now, there's no need to guess blindly! Experience the power of visualizing ignored (selected) files and receive instant feedback through intuitive representations.
 
 **Highlights**
 - Asynchronous output, so you can scroll smoothly while processing
