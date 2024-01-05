@@ -9,6 +9,7 @@ No more shooting in the blind! Visualize ignored (selected) files and get instan
 **Highlights**
 - Asynchronous output, so you can scroll smoothly while processing
 - Extremely fast for large repositories
+- Human friendly number representations
 - Supports `git` and `fd` ignore files
 - Supports custom ignore files and custom `fd` arguments (coming soon)
 
