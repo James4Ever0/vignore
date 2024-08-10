@@ -1,6 +1,6 @@
 # vignore
 
-It has been a while since I've found writing ignore files, like .gitignore, .dockerignore, or .fdignore, to be a hassle.
+It has been a while since I've found writing ignore files, like .gitignore, .dockerignore, or .fdignore, being a hassle.
 
 I've struggled with including the correct files and excluding unwanted ones.
 
