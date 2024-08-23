@@ -1,4 +1,13 @@
-# vignore
+<h1 align="center">vignore</h1>
+
+<h2 align="center"><i>Never been so easy to edit *.ignore files</i></h2>
+
+<p align="center">
+<a href="https://github.com/james4ever0/vignore/blob/master/LICENSE"><img alt="License: WTFPL" src="https://img.shields.io/badge/license-UNLICENSE-green.svg?style=flat"></a>
+<a href="https://pypi.org/project/vignore/"><img alt="PyPI" src="https://img.shields.io/pypi/v/vignore"></a>
+<a href="https://pepy.tech/project/vignore"><img alt="Downloads" src="https://static.pepy.tech/badge/vignore"></a>
+<a href="https://github.com/james4ever0/vignore"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+</p>
 
 It has been a while since I've found writing ignore files, like .gitignore, .dockerignore, or .fdignore, being a hassle.
 
