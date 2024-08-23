@@ -3,6 +3,10 @@
 <h2 align="center"><i>Never been so easy to edit *.ignore files</i></h2>
 
 <p align="center">
+<a href="https://asciinema.org/a/630043"><img alt="Demo" src="https://asciinema.org/a/630043.svg"></a>
+</p>
+
+<p align="center">
 <a href="https://github.com/james4ever0/vignore/blob/master/LICENSE"><img alt="License: WTFPL" src="https://img.shields.io/badge/license-UNLICENSE-green.svg?style=flat"></a>
 <a href="https://pypi.org/project/vignore/"><img alt="PyPI" src="https://img.shields.io/pypi/v/vignore"></a>
 <a href="https://pepy.tech/project/vignore"><img alt="Downloads" src="https://static.pepy.tech/badge/vignore"></a>
@@ -21,10 +25,6 @@ But now, there's no need to guess blindly! Experience the power of visualizing i
 - Human friendly number representations
 - Supports `git` and `fd` ignore files
 - Supports custom ignore files and custom `fd` arguments (coming soon)
-
-## Demo
-
-[![asciicast](https://asciinema.org/a/630043.svg)](https://asciinema.org/a/630043)
 
 ## Install
 
