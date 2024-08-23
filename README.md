@@ -1,6 +1,6 @@
 <h1 align="center">vignore</h1>
 
-<h2 align="center"><i>Never been so easy to edit *.ignore files</i></h2>
+<h2 align="center"><i>Never been so easy to visualize ignore rules</i></h2>
 
 <p align="center">
 <a href="https://asciinema.org/a/630043"><img alt="Demo" src="https://asciinema.org/a/630043.svg"></a>
