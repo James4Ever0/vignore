@@ -13,7 +13,7 @@
 <a href="https://github.com/james4ever0/vignore"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 </p>
 
-It has been a while since I've found writing ignore files, like .gitignore, .dockerignore, or .fdignore, being a hassle.
+It has been a while since I've found writing ignore files, like `.gitignore`, `.dockerignore`, or `.fdignore`, being a hassle.
 
 I've struggled with including the correct files and excluding unwanted ones.
 
