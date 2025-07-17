@@ -8,7 +8,6 @@
 
 # to find empty files:
 # fd -S "-1b"
-# import sys
 
 # filter out empty files:
 # fd -S "+1b"
@@ -20,7 +19,6 @@ from textual.widgets import Header, Footer, Tree, Label
 from rich.text import Text
 from textual.timer import Timer
 from threading import Lock
-# from tempfile import TemporaryDirectory
 from jinja2 import Template
 from argparse import ArgumentParser
 from beartype import beartype
@@ -29,7 +27,9 @@ from collections import defaultdict
 import os
 import aiofiles
 import asyncio
+
 cached_paths = []
+
 INTERVAL = 0.1
 SLEEP=7
 
@@ -73,6 +73,15 @@ def expand_parent(elem):
     if not elem.is_root:
         expand_parent(elem.parent)
 
+
+
+async def count_lines(file_path):
+    count = 0
+    async with aiofiles.open(file_path, 'r') as fp:  # Async context manager
+        async for line in fp:  # Asynchronous line iteration
+            count += 1
+    return count
+
 async def read_file_and_get_line_count(filepath: str):
     filepath = os.path.abspath(filepath)
     if not os.path.exists(filepath):
@@ -86,18 +95,7 @@ async def read_file_and_get_line_count(filepath: str):
             readable = True
         if readable:
             lc = 0
-            # use 'cat' & 'wc -l'
-            cmd = ['wc', '-l', filepath]
-            p = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE)
-            line = await p.stdout.read()
-            decline = line.decode().strip()
-            # with open("lc.txt", 'w+') as f:
-            #     f.write(decline)
-            #     exit()
-            #     # sys.exit()
-            lc = decline.split(' ')[0]
-            lc = int(lc)
-            await p.wait()
+            lc = await count_lines(filepath)
             return lc if lc else 1
     except:
         return -2
@@ -165,9 +163,10 @@ class VisualIgnoreApp(App):
     def action_restart(self):
         self.loop_break = True
 
-    def __init__(self, diffpath, *args, **kwargs):
+    def __init__(self, diffpath:str, fd_bin_path:str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.header = Header()
+        self.fd_bin_path = fd_bin_path
         self.diffpath = diffpath
         self.treeview = Tree(".")
         # do not expand, since this is slow.
@@ -242,12 +241,11 @@ class VisualIgnoreApp(App):
             self.error_count = 0
             self.error_size_count = 0
             self.previous_time = datetime.now()
-            command = ["bash", "-c", f"cd '{self.diffpath}' && fd -S '+1b'"]
-            # command = ["bash", "-c", f"cd '{self.diffpath}' && fd"]
+            command = [self.fd_bin_path, "-S", "+1b"]
             process = await asyncio.create_subprocess_exec(
                 *command,
                 stdout=asyncio.subprocess.PIPE,
-                # stderr=asyncio.subprocess.PIPE
+                cwd=self.diffpath
             )
             banner_refresh_counter = 0
             while not self.loop_break:
@@ -353,8 +351,8 @@ class VisualIgnoreApp(App):
                 await process.wait()
                 # clear those nonselected paths, mark as grey
                 # now for another step
-                command2 = ['bash','-c',f"cd '{self.diffpath}' && fd -u -S '+1b'"]
-                process2 = await asyncio.create_subprocess_exec(*command2, stdout = asyncio.subprocess.PIPE)
+                command2 = ['fd','-u','-S','+1b']
+                process2 = await asyncio.create_subprocess_exec(*command2, stdout = asyncio.subprocess.PIPE, cwd=self.diffpath)
                 banner_refresh_counter = 0
                 while not self.loop_break:
                     line = await process2.stdout.readline() # type:ignore
@@ -464,13 +462,28 @@ class VisualIgnoreApp(App):
         """An action to exit the app."""
         self.exit()
 
+def set_event_loop():
+    import sys
+
+    if sys.platform == 'win32':
+        loop = asyncio.ProactorEventLoop()
+        asyncio.set_event_loop(loop)
 
 def check_fd_installed():
     import shutil
-    fd_bin_path = shutil.which('fd')
+    import platform
+    if platform.platform().lower() == "windows":
+        fd_shorthand = "fd.exe"
+    else:
+        fd_shorthand="fd"
+
+    fd_bin_path = shutil.which(fd_shorthand)
     assert fd_bin_path, "Binary 'fd' not in PATH. Please install from https://github.com/sharkdp/fd/releases/latest"
+    return fd_bin_path
+
 def main():
     diffpath = parse_args()
-    check_fd_installed()
-    app = VisualIgnoreApp(diffpath)
+    fd_bin_path = check_fd_installed()
+    set_event_loop()
+    app = VisualIgnoreApp(diffpath=diffpath, fd_bin_path=fd_bin_path)
     app.run()
