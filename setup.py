@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="vignore",
-    version="1.0.5",
+    version="1.0.6",
     packages=["vignore"],
     description="Visualize ignored files and directories by rules.",
     url="https://github.com/james4ever0/vignore",
