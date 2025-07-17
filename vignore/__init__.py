@@ -465,7 +465,11 @@ class VisualIgnoreApp(App):
         self.exit()
 
 
+def check_fd_installed():
+    fd_bin_path = shutil.which('fd')
+    assert fd_bin_path, "Binary 'fd' not in PATH. Please install from https://github.com/sharkdp/fd/releases/latest"
 def main():
     diffpath = parse_args()
+    check_fd_installed()
     app = VisualIgnoreApp(diffpath)
     app.run()
