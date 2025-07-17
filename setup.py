@@ -16,6 +16,7 @@ setup(
         "beartype",
         "aiofiles",
         "asyncio",
+        "humanize"
     ],
     entry_points="""
         [console_scripts]
