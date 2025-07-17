@@ -75,12 +75,35 @@ def expand_parent(elem):
 
 
 
-async def count_lines(file_path):
+async def count_lines_text(file_path):
     count = 0
     async with aiofiles.open(file_path, 'r') as fp:  # Async context manager
         async for line in fp:  # Asynchronous line iteration
             count += 1
     return count
+
+async def _async_count_chunks(reader, chunk_size):
+    """Async generator to yield chunks of data"""
+    while True:
+        chunk = await reader(chunk_size)
+        if not chunk:
+            break
+        yield chunk
+
+async def count_lines_binary(file_path):
+    chunk_size = 1024 * 1024  # 1MB chunks
+    count = 0
+    async with aiofiles.open(file_path, 'rb') as fp:
+        # Create async generator for chunks
+        chunk_generator = _async_count_chunks(fp.read, chunk_size)
+
+        # Process each chunk as it's read
+        async for chunk in chunk_generator:
+            count += chunk.count(b'\n')
+
+    # Preserve original +1 behavior
+    return count + 1
+
 
 async def read_file_and_get_line_count(filepath: str):
     filepath = os.path.abspath(filepath)
@@ -95,7 +118,7 @@ async def read_file_and_get_line_count(filepath: str):
             readable = True
         if readable:
             lc = 0
-            lc = await count_lines(filepath)
+            lc = await count_lines_binary(filepath)
             return lc if lc else 1
     except:
         return -2
