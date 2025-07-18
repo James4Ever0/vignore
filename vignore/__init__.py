@@ -18,14 +18,22 @@
 
 # TODO: use docopt, add copy command to copy files that are not ignored to a new destination
 
-# TODO: fix label renderable content not updating issue (is it because of incompatible textual version?)
-
 # TODO: customize the look of vscode, background, app icon for this specific project, "vignore"
+
+# TODO: add search functionality, highlight ones with matching keywords
+
+# TODO: add key bindings to focus on next/previous search result
+
+# TODO: show statistics of the file extension name, also file size, lines by different extension
+
+# TODO: shortcut for expanding and shrinking tree nodes
+
+# TODO: check original implementation on alienware, see if we can use the same code
 
 import humanize
 import numpy
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Tree, Label, Static
+from textual.widgets import Header, Footer, Tree, Label
 from rich.text import Text
 from textual.timer import Timer
 from threading import Lock
@@ -238,11 +246,14 @@ class CustomTree(Tree):
         # self.app.notify(f"highlighted: {event.node}")
         highlighted_node = event.node
         if highlighted_node:
-            node_full_path = get_full_path(highlighted_node)  # could have / in the end
-            if not highlighted_node._children:
-                node_full_path = node_full_path.rstrip("/")
-            self.app.update_addressline(node_full_path)
-            # self.app.notify(f"highlighted: {node_full_path}")
+            if highlighted_node.is_root:
+                node_full_path = "./"
+            else:
+                node_full_path = get_full_path(highlighted_node)  # could have / in the end
+                if not highlighted_node._children:
+                    node_full_path = node_full_path.rstrip("/")
+                self.app.update_addressline(node_full_path)
+                # self.app.notify(f"highlighted: {node_full_path}")
 
 
 class VisualIgnoreApp(App):
@@ -252,7 +263,7 @@ class VisualIgnoreApp(App):
         # ("d", "toggle_dark", "Toggle dark mode"),
         ("e", "exit", "Exit"),
         ("r", "restart", "Restart"),
-        ("t", "toggle_label", "Toggle label"),
+        ("t", "toggle_label", "Toggle summary"),
         # TODO: toggle label display
     ]
     timer: Timer
