@@ -16,6 +16,8 @@
 
 # TODO: use docopt, add copy command to copy files that are not ignored to a new destination
 
+# TODO: fix label renderable content not updating issue (is it because of incompatible textual version?)
+
 import humanize
 import numpy
 from textual.app import App, ComposeResult
@@ -57,7 +59,8 @@ def estimate_time_from_filesize(filesize: int):
     seconds = (filesize / 1000) * 60
     return seconds
 
-# TODO: make this bash script into python
+
+# TODO: remove dead code
 script_template_str = """
 cd "{{diffpath}}"
 fd --no-ignore --hidden | tree --fromfile > "{{tempdir}}/all_tree.txt"
@@ -65,7 +68,6 @@ fd | tree --fromfile > "{{tempdir}}/selected_tree.txt"
 diff -y "{{tempdir}}/all_tree.txt" "{{tempdir}}/selected_tree.txt" > "{{tempdir}}/diff_tree.txt"
 cat "{{tempdir}}/diff_tree.txt"
 """
-
 
 
 # tree output in json
@@ -172,8 +174,15 @@ def parse_args():
         required=True,
         type=str,
     )
+    parser.add_argument(
+        "-c", "--copy", help="Path to copy files filtered by ignore rules to", type=str
+    )
+    parser.add_argument(
+        "-i", "--inverse", help="Inverse the ignore rules", action="store_true"
+    )
+    parser.add_argument("-y", "--dryrun", help="Dry run", action="store_true")
     args = parser.parse_args()
-    return args.diffpath
+    return args
 
 
 def dirsplit(path):
@@ -186,6 +195,7 @@ def iterate_parent_dirs(path):
     parts = path.split("/")
     for i in range(1, len(parts)):
         yield "/".join(parts[:i]) + "/", parts[i - 1]
+
 
 # TODO: remove dead code
 @beartype
@@ -200,29 +210,45 @@ class VisualIgnoreApp(App):
     """A Textual app to visualize ignore files."""
 
     BINDINGS = [
-        ("d", "toggle_dark", "Toggle dark mode"),
+        # ("d", "toggle_dark", "Toggle dark mode"),
         ("e", "exit", "Exit"),
         ("r", "restart", "Restart"),
+        ("t", "toggle_label", "Toggle label"),
+        # TODO: toggle label display
     ]
     timer: Timer
 
     def action_restart(self):
         self.loop_break = True
 
+    def action_toggle_label(self, refresh=True):
+        self.label.visible = not self.label.visible
+        if not self.label.visible:
+            self.label.styles.max_height = 0
+        else:
+            self.label.styles.max_height = None
+        if refresh:
+            self.label.recompose()
+            self.label.refresh()
+
     def __init__(self, diffpath: str, fd_bin_path: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.title = "vignore"
         self.header = Header()
         self.fd_bin_path = fd_bin_path
         self.diffpath = diffpath
         self.treeview = Tree(".")
         # do not expand, since this is slow.
         self.treeview.root.expand()
-        self.footer = Footer()
+        self.footer = Footer(show_command_palette=False)
         self.mymap = {"./": self.treeview.root}
         # self.counter = 0
         default_label = "Processing time: -/- (lines) -/- (size)\nLines: -/- Size: -/- Count: -/- Errors: -/-\nLast selection: - Selection: -/-\nTotal size: -/- Total count: -/- Errors: -/-\nLast scanning: - Scanning: -/-"
         self.label = Label(Text.assemble((default_label, "bold")), expand=True)
+        self.action_toggle_label(refresh=False)
         self.label.styles.background = "red"
+        # self.label.visible=False
+        # self.label.styles.max_height=0
         # self.label.styles.border = ('solid','red')
         # self.label.styles.height = 3
         self.label.styles.height = 5
@@ -286,7 +312,8 @@ class VisualIgnoreApp(App):
             self.error_count = 0
             self.error_size_count = 0
             self.previous_time = datetime.now()
-            command = [self.fd_bin_path, "-S", "+1b"]
+            # command = [self.fd_bin_path, "-S", "+1b"]
+            command = compile_fd_list_files_cmd(self.fd_bin_path)
             process = await asyncio.create_subprocess_exec(
                 *command, stdout=asyncio.subprocess.PIPE, cwd=self.diffpath
             )
@@ -373,12 +400,18 @@ class VisualIgnoreApp(App):
                                     )
                                 )
                             )
-
+                    if not error:
+                        label_prefix = f"[{label}, {fs_str}]"
+                    else:
+                        label_prefix = f"<{label}>"
+                        # if fs_str == "error":
+                        #     label_prefix = f"<{label}>"
+                        # else:
+                        #     label_prefix = f"<{label}, {fs_str}>"
                     subtree.set_label(
                         Text.assemble(
                             (
-                                (f"[{label}, {fs_str}]" if not error else f"<{label}>")
-                                + f" {fname}",
+                                label_prefix + f" {fname}",
                                 color,
                             )
                         )
@@ -440,7 +473,10 @@ class VisualIgnoreApp(App):
                 await process.wait()
                 # clear those nonselected paths, mark as grey
                 # now for another step
-                command2 = [self.fd_bin_path, "-u", "-S", "+1b"]
+                # command2 = [self.fd_bin_path, "-u", "-S", "+1b"]
+                command2 = compile_fd_list_files_cmd(
+                    self.fd_bin_path, unrestricted=True
+                )
                 process2 = await asyncio.create_subprocess_exec(
                     *command2, stdout=asyncio.subprocess.PIPE, cwd=self.diffpath
                 )
@@ -635,9 +671,112 @@ def check_fd_installed():
     return fd_bin_path
 
 
-def main():
-    diffpath = parse_args()
-    fd_bin_path = check_fd_installed()
+def copy_single_file_to_destination(source_path: str, target_path: str, dry_run: bool):
+    import shutil
+
+    if os.path.isdir(source_path):
+        if not dry_run:
+            os.makedirs(target_path, exist_ok=True)
+        print(f"making directory at: {target_path}")
+    elif os.path.isfile(source_path):
+        if not dry_run:
+            shutil.copy2(source_path, target_path)
+        print(f"copied {source_path} to {target_path}")
+    else:
+        print(
+            f"warning: source path {source_path} is not a file or directory, so ignored"
+        )
+
+
+def delete_single_file_from_destination(target_path: str, dry_run: bool):
+    import os
+
+    if os.path.isdir(target_path):
+        if not os.listdir(target_path):
+            if not dry_run:
+                # only delete empty directory
+                os.rmdir(target_path)
+            print(f"deleted empty directory at: {target_path}")
+        else:
+            print(
+                f"warning: target directory path {target_path} is not empty, so ignored"
+            )
+    elif os.path.isfile(target_path):
+        if not dry_run:
+            os.remove(target_path)
+        print(f"deleted {target_path}")
+    else:
+        print(
+            f"warning: target path {target_path} is not a file or directory, so ignored"
+        )
+
+
+def compile_fd_list_files_cmd(fd_bin_path: str, unrestricted: bool = False):
+    if unrestricted:
+        cmd = [fd_bin_path, "-u", "-S", "+1b"]
+    else:
+        cmd = [fd_bin_path, "-S", "+1b"]
+    return cmd
+
+
+def fd_list_files(diffpath: str, fd_bin_path: str, respect_ignore_rules: bool):
+    import subprocess
+
+    unrestricted = not respect_ignore_rules
+    cmd = compile_fd_list_files_cmd(fd_bin_path, unrestricted=unrestricted)
+    process = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=diffpath, text=True
+    )
+    for line in process.stdout:
+        yield line.strip()
+
+
+def perform_copy_operation(
+    diffpath: str, fd_bin_path: str, inverse: bool, copy_target_dir: str, dry_run: bool
+):
+    assert os.path.isdir(diffpath), f"Directory {diffpath} does not exist"
+    assert os.path.isdir(copy_target_dir), f"Directory {copy_target_dir} does not exist"
+    if inverse:
+        # inverse operation shall be performed like:
+        # copy all files to destination
+        # delete non-ignored files from destination
+        for path in fd_list_files(diffpath, fd_bin_path, respect_ignore_rules=False):
+            source_path = os.path.join(diffpath, path)
+            dest_path = os.path.join(copy_target_dir, path)
+            copy_single_file_to_destination(source_path, dest_path, dry_run=dry_run)
+        for path in fd_list_files(
+            copy_target_dir, fd_bin_path, respect_ignore_rules=True
+        ):
+            dest_path = os.path.join(copy_target_dir, path)
+            delete_single_file_from_destination(dest_path, dry_run=dry_run)
+    else:
+        for path in fd_list_files(diffpath, fd_bin_path, respect_ignore_rules=True):
+            source_path = os.path.join(diffpath, path)
+            dest_path = os.path.join(copy_target_dir, path)
+            copy_single_file_to_destination(source_path, dest_path, dry_run=dry_run)
+
+
+def launch_vignore_app(diffpath: str, fd_bin_path: str):
     set_event_loop()
     app = VisualIgnoreApp(diffpath=diffpath, fd_bin_path=fd_bin_path)
     app.run()
+
+
+def main():
+    args = parse_args()
+    diffpath = args.diffpath
+    copy_target_dir = args.copy
+    inverse = args.inverse
+    dry_run = args.dryrun
+    fd_bin_path = check_fd_installed()
+    if copy_target_dir:
+        # perform copy operation
+        perform_copy_operation(
+            diffpath=diffpath,
+            fd_bin_path=fd_bin_path,
+            inverse=inverse,
+            copy_target_dir=copy_target_dir,
+            dry_run=dry_run,
+        )
+    else:
+        launch_vignore_app(diffpath=diffpath, fd_bin_path=fd_bin_path)
