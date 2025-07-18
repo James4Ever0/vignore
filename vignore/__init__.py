@@ -239,7 +239,8 @@ class CustomTree(Tree):
         highlighted_node = event.node
         if highlighted_node:
             node_full_path = get_full_path(highlighted_node)  # could have / in the end
-            node_full_path = node_full_path.rstrip("/")
+            if not highlighted_node._children:
+                node_full_path = node_full_path.rstrip("/")
             self.app.update_addressline(node_full_path)
             # self.app.notify(f"highlighted: {node_full_path}")
 
@@ -282,7 +283,7 @@ class VisualIgnoreApp(App):
         self.treeview = CustomTree(".")
         # do not expand, since this is slow.
         self.treeview.root.expand()
-        self.treeview_addressline = Label(Text.assemble("."), expand=True)
+        self.treeview_addressline = Label(Text.assemble("./"), expand=True)
         self.treeview_addressline.styles.background = "green"
 
         self.footer = Footer(show_command_palette=False)
@@ -706,7 +707,6 @@ def set_event_loop():
     if sys.platform == "win32":
         loop = asyncio.ProactorEventLoop()
         asyncio.set_event_loop(loop)
-
 
 def check_fd_installed():
     import shutil
