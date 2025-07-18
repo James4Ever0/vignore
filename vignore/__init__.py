@@ -6,6 +6,8 @@
 # TODO: add visualization of tree files.
 # TODO: add action to restart the processing thread
 
+# TODO: show the relative path of the selected item in the file tree
+
 # to find empty files:
 # fd -S "-1b"
 
@@ -18,10 +20,12 @@
 
 # TODO: fix label renderable content not updating issue (is it because of incompatible textual version?)
 
+# TODO: customize the look of vscode, background, app icon for this specific project, "vignore"
+
 import humanize
 import numpy
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Tree, Label
+from textual.widgets import Header, Footer, Tree, Label, Static
 from rich.text import Text
 from textual.timer import Timer
 from threading import Lock
@@ -89,7 +93,7 @@ def expand_parent(elem):
 async def count_lines_text(file_path: str):
     count = 0
     async with aiofiles.open(file_path, "r") as fp:  # Async context manager
-        async for line in fp:  # Asynchronous line iteration
+        async for _ in fp:  # Asynchronous line iteration
             count += 1
     return count
 
@@ -203,7 +207,41 @@ def render_script_template(diffpath: str, tempdir: str) -> str:
     return script_template.render(diffpath=diffpath, tempdir=tempdir)
 
 
-processingLock = Lock()
+# processingLock = Lock()
+def get_node_name(node):
+    node_text = node.label._text[0]
+    if node_text.startswith("<"):
+        node_name = node_text.split(">", 1)[1].lstrip(" ")
+    elif node_text.startswith("["):
+        node_name = node_text.split("]", 1)[1].lstrip(" ")
+    elif node_text.startswith("("):
+        node_name = node_text.split(")", 1)[1].lstrip(" ")
+    else:
+        node_name = node_text
+    return node_name
+
+
+def get_full_path(node, result="") -> str:
+    node_name = get_node_name(node)
+    result = node_name + "/" + result
+    if not node.is_root:
+        return get_full_path(node.parent, result=result)
+    else:
+        return result
+
+
+class CustomTree(Tree):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
+        # self.app.notify(f"highlighted: {event.node}")
+        highlighted_node = event.node
+        if highlighted_node:
+            node_full_path = get_full_path(highlighted_node)  # could have / in the end
+            node_full_path = node_full_path.rstrip("/")
+            self.app.update_addressline(node_full_path)
+            # self.app.notify(f"highlighted: {node_full_path}")
 
 
 class VisualIgnoreApp(App):
@@ -231,22 +269,29 @@ class VisualIgnoreApp(App):
             self.label.recompose()
             self.label.refresh()
 
+    def update_addressline(self, address: str):
+        self.treeview_addressline.update(Text.assemble(address))
+
     def __init__(self, diffpath: str, fd_bin_path: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.processingLock = Lock()
         self.title = "vignore"
         self.header = Header()
         self.fd_bin_path = fd_bin_path
         self.diffpath = diffpath
-        self.treeview = Tree(".")
+        self.treeview = CustomTree(".")
         # do not expand, since this is slow.
         self.treeview.root.expand()
+        self.treeview_addressline = Label(Text.assemble("."), expand=True)
+        self.treeview_addressline.styles.background = "green"
+
         self.footer = Footer(show_command_palette=False)
         self.mymap = {"./": self.treeview.root}
         # self.counter = 0
         default_label = "Processing time: -/- (lines) -/- (size)\nLines: -/- Size: -/- Count: -/- Errors: -/-\nLast selection: - Selection: -/-\nTotal size: -/- Total count: -/- Errors: -/-\nLast scanning: - Scanning: -/-"
         self.label = Label(Text.assemble((default_label, "bold")), expand=True)
         self.action_toggle_label(refresh=False)
-        self.label.styles.background = "red"
+        self.label.styles.background = "green"
         # self.label.visible=False
         # self.label.styles.max_height=0
         # self.label.styles.border = ('solid','red')
@@ -288,7 +333,7 @@ class VisualIgnoreApp(App):
         self.previous_total_count = "-"
 
     async def progress(self):
-        locked = processingLock.acquire(blocking=False)
+        locked = self.processingLock.acquire(blocking=False)
         if locked:  # taking forever. bad.
             self.processing_time_by_line = 0
             self.processing_time_by_size = 0
@@ -427,13 +472,14 @@ class VisualIgnoreApp(App):
                     self.processing_time_by_size = naturaltime(
                         estimate_time_from_filesize(self.selected_size)
                     )
-                    self.label.renderable = Text.assemble(
-                        (
-                            f"Processing time: {self.processing_time_by_line}/{self.previous_processing_time_by_line} (lines) {self.processing_time_by_size}/{self.previous_processing_time_by_size} (size)\nLines: {self.line_count}/{self.previous_line_count} Size: {humanize.naturalsize(self.selected_size)}/{self.previous_selected_size} Count: {self.selected_count}/{self.previous_selected_count} Errors: {self.error_count}/{self.previous_error_count}\nLast selection: {self.previous_selection_formatted} Selection: {running}/{self.previous_selection}\nTotal size: -/{self.previous_filesize} Total count: -/{self.previous_total_count} Errors: -/{self.previous_error_size_count}\nLast scanning: {self.previous_scanning_formatted} Scanning: -/{self.previous_scanning}",
-                            "bold",
+                    self.label.update(
+                        Text.assemble(
+                            (
+                                f"Processing time: {self.processing_time_by_line}/{self.previous_processing_time_by_line} (lines) {self.processing_time_by_size}/{self.previous_processing_time_by_size} (size)\nLines: {self.line_count}/{self.previous_line_count} Size: {humanize.naturalsize(self.selected_size)}/{self.previous_selected_size} Count: {self.selected_count}/{self.previous_selected_count} Errors: {self.error_count}/{self.previous_error_count}\nLast selection: {self.previous_selection_formatted} Selection: {running}/{self.previous_selection}\nTotal size: -/{self.previous_filesize} Total count: -/{self.previous_total_count} Errors: -/{self.previous_error_size_count}\nLast scanning: {self.previous_scanning_formatted} Scanning: -/{self.previous_scanning}",
+                                "bold",
+                            )
                         )
                     )
-                    self.label.refresh()
             # not_selected = 0
             if self.loop_break:
                 try:
@@ -583,13 +629,14 @@ class VisualIgnoreApp(App):
                         # if banner_refresh_counter > 10000:
                         banner_refresh_counter = 0
                         running = format_timedelta(datetime.now() - self.previous_time)
-                        self.label.renderable = Text.assemble(
-                            (
-                                f"Processing time: -/{self.previous_processing_time_by_line} (lines) -/{self.previous_processing_time_by_size} (size)\nLines: -/{self.previous_line_count} Size: -/{self.previous_selected_size} Count: -/{self.previous_selected_count} Errors: -/{self.previous_error_count}\nLast selection: {self.previous_selection_formatted} Selection: -/{self.previous_selection}\nTotal size: {humanize.naturalsize(self.filesize)}/{self.previous_filesize} Total count: {self.total_count}/{self.previous_total_count} Errors: {self.error_size_count}/{self.previous_error_size_count}\nLast scanning: {self.previous_scanning_formatted} Scanning: {running}/{self.previous_scanning}",
-                                "bold",
+                        self.label.update(
+                            Text.assemble(
+                                (
+                                    f"Processing time: -/{self.previous_processing_time_by_line} (lines) -/{self.previous_processing_time_by_size} (size)\nLines: -/{self.previous_line_count} Size: -/{self.previous_selected_size} Count: -/{self.previous_selected_count} Errors: -/{self.previous_error_count}\nLast selection: {self.previous_selection_formatted} Selection: -/{self.previous_selection}\nTotal size: {humanize.naturalsize(self.filesize)}/{self.previous_filesize} Total count: {self.total_count}/{self.previous_total_count} Errors: {self.error_size_count}/{self.previous_error_size_count}\nLast scanning: {self.previous_scanning_formatted} Scanning: {running}/{self.previous_scanning}",
+                                    "bold",
+                                )
                             )
                         )
-                        self.label.refresh()
                 if self.loop_break:
                     try:
                         process2.terminate()
@@ -627,13 +674,19 @@ class VisualIgnoreApp(App):
                 # clear nonexisting paths
                 await asyncio.sleep(SLEEP)
 
-            processingLock.release()
+            self.processingLock.release()
 
         # self.counter += 1
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
-        return [self.header, self.treeview, self.label, self.footer]
+        return [
+            self.header,
+            self.treeview_addressline,
+            self.treeview,
+            self.label,
+            self.footer,
+        ]
 
     def on_mount(self) -> None:
         self.timer = self.set_interval(INTERVAL, self.progress)
