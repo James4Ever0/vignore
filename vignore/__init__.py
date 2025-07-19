@@ -744,6 +744,9 @@ def copy_single_file_to_destination(source_path: str, target_path: str, dry_run:
         print(f"making directory at: {target_path}")
     elif os.path.isfile(source_path):
         if not dry_run:
+            target_basedir = os.path.dirname(target_path)
+            if not os.path.exists(target_basedir):
+                os.makedirs(target_basedir, exist_ok=True)
             shutil.copy2(source_path, target_path)
         print(f"copied {source_path} to {target_path}")
     else:
