@@ -168,7 +168,7 @@ def patch_missing_files(path, basemap, expand=False, processor=lambda x: x):
         return basemap.get(path), filename, True
 
 
-async def get_file_size(filename):
+async def get_file_size(filename:str):
     try:
         async with aiofiles.open(filename, mode="rb") as file:
             file_size = os.fstat(file.fileno()).st_size
@@ -802,7 +802,18 @@ def perform_copy_operation(
     diffpath: str, fd_bin_path: str, inverse: bool, copy_target_dir: str, dry_run: bool
 ):
     assert os.path.isdir(diffpath), f"Directory {diffpath} does not exist"
-    assert os.path.isdir(copy_target_dir), f"Directory {copy_target_dir} does not exist"
+    if not os.path.isdir(copy_target_dir):
+        print(f"Warning: directory {copy_target_dir} does not exist")
+        assert not os.path.exists(copy_target_dir), f"{copy_target_dir} is not a directory"
+        print("Creating target directory:", copy_target_dir)
+        if not dry_run:
+            ans = input("Proceed? (y/n): ")
+            if ans.strip().lower()== "y":
+                print("User confirmed")
+                os.makedirs(copy_target_dir, exists_ok=True)
+            else:
+                print("Aborting")
+                return
     if inverse:
         # inverse operation shall be performed like:
         # copy all files to destination
