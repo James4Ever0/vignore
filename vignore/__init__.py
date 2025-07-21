@@ -810,7 +810,7 @@ def perform_copy_operation(
             ans = input("Proceed? (y/n): ")
             if ans.strip().lower()== "y":
                 print("User confirmed")
-                os.makedirs(copy_target_dir, exists_ok=True)
+                os.makedirs(copy_target_dir, exist_ok=True)
             else:
                 print("Aborting")
                 return
